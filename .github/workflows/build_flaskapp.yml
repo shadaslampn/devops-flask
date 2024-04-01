@@ -10,8 +10,8 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest  # Replace with desired runner OS (if needed)
 
-    env:
-      INVENTORY_PATH: ${{ secrets.INVENTORY_PATH }}  # Access inventory path from GitHub Secret
+    #env:
+      #INVENTORY_PATH: ${{ secrets.INVENTORY_PATH }}  # Access inventory path from GitHub Secret
 
     steps:
       - uses: actions/checkout@v3  # Checkout your code from GitHub
