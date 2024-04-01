@@ -1,4 +1,3 @@
-######
 FROM alpine:3.8
 
 RUN mkdir /var/flaskapp
