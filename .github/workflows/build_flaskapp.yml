@@ -1,0 +1,25 @@
+---
+name: Build and Deploy Flask App
+
+on:
+  push:
+    branches:
+      - master  # Replace with the branch(es) you want to trigger on
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest  # Replace with desired runner OS (if needed)
+
+    env:
+      INVENTORY_PATH: ${{ secrets.INVENTORY_PATH }}  # Access inventory path from GitHub Secret
+
+    steps:
+      - uses: actions/checkout@v3  # Checkout your code from GitHub
+
+      - name: Install Ansible
+        uses: ansible/ansible-action@v2
+        with:
+          version: 'latest'  # Or a specific version
+
+      - name: Build Docker Image
+        run: ansible-playbook main.yml -i "$INVENTORY_PATH"
