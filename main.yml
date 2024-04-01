@@ -1,0 +1,135 @@
+---
+- name: "Docker Image Build"
+  hosts: build
+  become: true
+  vars:
+    packages:
+      - "docker"
+      - "git"
+      - "python3-pip"
+    app_url: "https://github.com/shadaslampn/devops-flask.git"
+    clone_dir: "/var/flaskapp/"
+    image_name: "shadpkl/flask-morning"
+  vars_files:
+  tasks:
+    - name: "Build - Installing Packages"
+      yum:
+        name: "{{ packages }}"
+        state: present
+
+    - name: "Build - Adding ec2-user to docker group"
+      user:
+        name: "ec2-user"
+        groups:
+          - docker
+        append: true
+
+    - name: "Build - Starting/Enabling Docker Service"
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+
+    - name: "Build - Installing Python Docker Extension"
+      become: false
+      pip:
+        name: docker
+        state: present
+
+    - name: "Build - Cloning git repo {{ app_url }}"
+      git:
+        repo: "{{ app_url}}"
+        dest: "{{ clone_dir }}"
+      register: clone_status
+
+    - name: "Build - Login to Dockerhub"
+      when: clone_status.changed ==true
+      community.docker.docker_login:
+        username: "{{ DOCKER_USER }}"
+        password: "{{ DOCKER_PASSWORD }}"
+        state: present
+
+    - name: "Build - Build Docker image and Push to Dockerhub"
+      when: clone_status.changed == true
+      community.docker.docker_image:
+        source: build
+        build:
+          path: "{{ clone_dir }}"
+          pull: yes
+        name: "{{ image_name }}"
+        tag: "{{ item }}"
+        push: true
+        force_tag: yes
+        force_source: yes
+      with_items:
+        - "{{ clone_status.after }}"
+        - latest
+      register: build_status
+
+    - name: "Build - Deleting Local image from Build server"
+      when: build_status.changed == true
+      community.docker.docker_image:
+        state: absent
+        name: "{{ image_name }}"
+        tag: "{{ item }}"
+      with_items:
+        - "{{ clone_status.after }}"
+        - latest
+
+    - name: "Build - Logout from Dockerhub"
+      when: clone_status.changed == true
+      community.docker.docker_login:
+        username: "{{ DOCKER_USER }}"
+        password: "{{ DOCKER_PASSWORD }}"
+        state: absent
+
+
+- name: "Running image on Test server"
+  hosts: test
+  become: true
+  vars:
+    image_name: "shadpkl/flask-morning"
+    packages:
+      - docker
+      - python3-pip
+  tasks:
+
+    - name: "Test - Installing Packages"
+      yum:
+        name: "{{ packages }}"
+        state: present
+
+    - name: "Test - Adding ec2-user to docker group"
+      user:
+        name: "ec2-user"
+        groups:
+          - docker
+        append: true
+
+    - name: "Test - Installing Python Extension for Docker"
+      become: false
+      pip:
+        name: docker
+        state: present
+
+    - name: "Test - Docker Service Restart & Enable"
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: "Test - Pulling Docker image"
+      community.docker.docker_image:
+        name: "{{ image_name }}"
+        source: pull                #Pulling shadpkl/flask-morning:latest image from Dockerhub.
+        force_source: true          #Forcibly Replacing already existing latest image with new latest image.
+      register: image_status
+
+    - name: "Test - Run Container"
+      when: image_status.changed == true
+      community.docker.docker_container:
+        name: flaskapp
+        image: "{{ image_name }}:latest"
+        recreate: yes               #Delete & Create, If container named "flaskapp" already exist.
+        published_ports:
+          - "80:5000"
