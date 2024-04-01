@@ -1,6 +1,6 @@
 ---
 - name: "Docker Image Build"
-  hosts: build
+  hosts: "{{ secrets.HOSTS_BUILD }}"
   become: true
   vars:
     packages:
@@ -45,8 +45,8 @@
     - name: "Build - Login to Dockerhub"
       when: clone_status.changed ==true
       community.docker.docker_login:
-        username: "{{ DOCKER_USER }}"
-        password: "{{ DOCKER_PASSWORD }}"
+        username: "{{ secrets.DOCKER_USER }}"
+        password: "{{ secrets.DOCKER_PASSWORD }}"
         state: present
 
     - name: "Build - Build Docker image and Push to Dockerhub"
@@ -79,13 +79,13 @@
     - name: "Build - Logout from Dockerhub"
       when: clone_status.changed == true
       community.docker.docker_login:
-        username: "{{ DOCKER_USER }}"
-        password: "{{ DOCKER_PASSWORD }}"
+        username: "{{ secrets.DOCKER_USER }}"
+        password: "{{ secrets.DOCKER_PASSWORD }}"
         state: absent
 
 
 - name: "Running image on Test server"
-  hosts: test
+  hosts: "{{ secrets.HOSTS_TEST }}"
   become: true
   vars:
     image_name: "shadpkl/flask-morning"
