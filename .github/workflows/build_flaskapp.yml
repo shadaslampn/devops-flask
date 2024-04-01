@@ -4,7 +4,7 @@ name: Build and Deploy Flask App
 on:
   push:
     branches:
-      - master  # Replace with the branch(es) you want to trigger on
+      - main  # Replace with the branch(es) you want to trigger on
 
 jobs:
   build-and-deploy:
